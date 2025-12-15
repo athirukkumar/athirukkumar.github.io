@@ -1,0 +1,293 @@
+<!DOCTYPE HTML>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Racing Ahead: AI Analysis</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link rel="stylesheet" href="assets/css/tables.css">
+        <link rel="stylesheet" href="assets/css/code.css">
+
+        
+        <script src="scripts/loadTable.js"></script>
+    
+    </head>
+    
+
+	<body class="is-preload">
+
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo"><strong>Abinaash Thirukkumar</strong> <span></span></a>
+						<nav>
+							<a href="#menu">Menu</a>
+						</nav>
+					</header>
+
+					<nav id="menu">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li><a href="understanding_f1.html">Getting up to Speed: Understanding F1</a></li>
+							<li><a href="tech_stack_and_tools.html">Building the toolkit: Tech Stack and Tools</a></li>
+							<li><a href="from_track_to_table.html">From Track to Table: Extracting data</a></li>
+							<li><a href="under_the_hood.html">Under the hood: Storing Data with SQL</a></li>
+							<li><a href="chasing_the_perfect_lap.html">Chasing the Perfect Lap: Analysing the data</a></li>
+							<li><a href="racing_ahead.html">Racing Ahead: AI Analysis</a></li>
+							<!--<li><a href="generic.html">Generic</a></li>
+							/<li><a href="elements.html">Elements</a></li>-->
+						</ul>
+						<ul class="actions stacked">
+							<!--<li><a href="#" class="button primary fit">Get Started</a></li>
+							<li><a href="#" class="button fit">Log In</a></li>-->
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main" class="alt">
+
+						<!-- One -->
+							<section id="one">
+								<div class="inner">
+<section id="introduction">
+							<div style="width:80%; margin-left:10%; margin-top:2%;background-color: None; margin-right: 10%; margin-bottom: 5%;">
+							<h1><b>Racing Ahead: AI Analysis</b></h1>
+<h2>Why use AI to analyse numeric data?</h2>
+  <p>
+    AI enables faster, more efficient, and more detailed numeric analysis by automating calculations
+    and pattern recognition that would otherwise require significant manual effort. It can process
+    large datasets consistently and quickly, uncover trends that may be difficult to spot by eye,
+    and generate clear, explainable insights. This allows analysts and decision-makers to focus on
+    interpretation and action rather than time-consuming data preparation.
+  </p>
+
+  <h2>How does it work?</h2>
+  <p>
+    Numeric data is first pre-processed into a clean, structured format, such as a single table
+    aligning different timings with their corresponding speeds. The dataset is then converted into
+    markdown and included directly in a prompt sent to the Gemini API. This allows the AI to read
+    the data as structured context, perform detailed analysis, and return insights, comparisons,
+    and summaries automatically.
+  </p>
+								<h2>Get the qualifying information</h2>
+<pre><code class="language-python">
+# Step 1: Create unified table
+all_times = pd.Series(dtype=float)
+for driver, df in lap_times.items():
+    all_times = pd.concat([all_times, df['Time']])
+
+comparison_df = pd.DataFrame({'Time': all_times.unique()})
+comparison_df = comparison_df.sort_values('Time').reset_index(drop=True)
+
+# Step 2: Merge each driver's Speed dynamically
+for driver, df in lap_times.items():
+    comparison_df = pd.merge(
+        comparison_df,
+        df[['Time', 'Speed']],
+        on='Time',
+        how='outer'
+    ).rename(columns={'Speed': f'{driver} Speed'})
+
+comparison_df
+</code></pre>
+
+<h2>Sense check the output</h2>
+
+<div class="table-scroll">
+  <div id="comparison_table">
+    <script>
+    loadCSVTable("tables/racing_ahead/comparison.csv", "comparison_table");
+    </script>
+    </div>
+</div>
+
+<h2>Make API Call</h2>
+<p>The API key was stored locally for the purpose of this project as this would not be 
+	pushed to production. In a production environment, this API key would be 
+	stored in a password manager like Azure Key Vault
+</p>
+
+<pre><code class="language-python">
+client = genai.Client(api_key=API_KEY)
+
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=f"Here is some data:\n{comparison_df_data}\n\nPlease analyse this dataset, focusing on braking styles and comparitive analysis. These are the qualifying speed traces for drivers around the same track. The speed units are kmph"
+)
+
+ai_analysis = response.text
+</code></pre>
+
+
+<h2>Analysis of the Dataset: Braking and Comparative Analysis</h2>
+
+<p><i>Below is the formatted AI generated reponse</i></p>
+
+
+<p>This dataset provides speed traces for three drivers (NOR, PIA, VER) around the same track during qualifying, with speed measured in kmph. The key characteristic of the data is its asynchronous nature: each row generally contains a speed reading for only one driver at a specific timestamp, with <code>nan</code> values for the other drivers. This means we are observing discrete events rather than continuous, synchronized streams.</p>
+<p>Let's analyze the braking styles and conduct a comparative analysis.</p>
+<p><strong>Overall Observations:</strong></p>
+<ol>
+<li><strong>Lap Structure:</strong> The speed traces show clear patterns of acceleration (speeds rising to 320-340 kmph) followed by significant braking events (speeds dropping to 70-100 kmph), indicating a typical lap profile with straights and corners. The data covers approximately 1 minute and 18 seconds of track time.</li>
+<li><strong>Peak Speeds:</strong> All three drivers achieve very similar peak speeds, typically in the range of 330-340 kmph. This suggests they are maxing out the car's speed on the straights.</li>
+<li><strong>Variability:</strong> While peak speeds are similar, the differences in braking and cornering phases will reveal their distinct styles and relative performance.</li>
+</ol>
+<p><strong>Braking Style Analysis - Key Braking Zones:</strong></p>
+<p>To understand braking styles, we'll look at the most significant speed drops. There appear to be three major braking events in this recorded segment:</p>
+<ul>
+<li><strong>Braking Zone 1: Approximately 8 to 14 seconds</strong> (initial high speed to low speed)</li>
+<li><strong>Braking Zone 2: Approximately 53 to 58 seconds</strong> (mid-segment braking)</li>
+<li><strong>Braking Zone 3: Approximately 1 minute 9 seconds to 1 minute 13 seconds</strong> (final braking event)</li>
+</ul>
+<p>Let's break down each driver's apparent style:</p>
+<p><strong>1. VER (VER Speed):</strong></p>
+<ul>
+<li><strong>Braking Point:</strong> VER consistently appears to be among the earliest, if not the earliest, to initiate significant braking, or at least shows the first sharp drop in speed when entering a braking zone. For example, in the first major braking zone (around 8.0 seconds, from 348 kmph).</li>
+<li><strong>Braking Intensity/Force:</strong> VER seems to brake the hardest, achieving the steepest initial deceleration.<ul>
+<li><em>Zone 1 (0:00:08 - 0:00:10.978):</em> From 348 kmph (at 8.018s) down to 90 kmph (at 10.978s). This is a drop of 258 kmph in ~2.9 seconds, averaging a deceleration of ~89 kmph/s. He hits the lowest minimum speed of all three in this section (73 kmph at 12.979s).</li>
+<li><em>Zone 2 (0:00:53.898 - 0:00:55.538):</em> From 340 kmph (at 53.898s) down to 195 kmph (at 55.538s). A drop of 145 kmph in ~1.6 seconds, averaging ~91 kmph/s. Again, lowest minimum speed.</li>
+<li><em>Zone 3 (0:01:09.257 - 0:01:10.897):</em> From 291 kmph (at 1:09.257s) down to 217 kmph (at 1:10.897s). A drop of 74 kmph in ~1.6 seconds, averaging ~46 kmph/s. (Note: He starts this zone at a lower speed than PIA).</li>
+</ul>
+</li>
+<li><strong>Minimum Speed:</strong> Often reaches the lowest minimum speed within a braking zone, suggesting aggressive trail braking or a tighter line through the corner.</li>
+<li><strong>Acceleration:</strong> Post-braking, VER shows good re-acceleration, quickly picking up speed from his low point.</li>
+</ul>
+<p><strong>2. PIA (PIA Speed):</strong></p>
+<ul>
+<li><strong>Braking Point:</strong> PIA's braking initiation is generally very close to NOR's, sometimes slightly later than VER.</li>
+<li><strong>Braking Intensity/Force:</strong> PIA exhibits strong braking, though perhaps marginally less aggressive than VER's initial bite.<ul>
+<li><em>Zone 1 (0:00:08.150 - 0:00:11.470):</em> From 344 kmph (at 8.150s) down to 83 kmph (at 11.470s). A drop of 261 kmph in ~3.3 seconds, averaging ~79 kmph/s. His minimum speed in this section is 74 kmph (at 13.350s).</li>
+<li><em>Zone 2 (0:00:54.110 - 0:00:55.471):</em> From 334 kmph (at 54.110s) down to 212 kmph (at 55.471s). A drop of 122 kmph in ~1.3 seconds, averaging ~94 kmph/s. This is a very sharp deceleration, comparable to or even slightly faster than VER's in this specific segment.</li>
+<li><em>Zone 3 (0:01:09.071 - 0:01:10.829):</em> From 330 kmph (at 1:09.071s) down to 221 kmph (at 1:10.829s). A drop of 109 kmph in ~1.7 seconds, averaging ~64 kmph/s.</li>
+</ul>
+</li>
+<li><strong>Minimum Speed:</strong> Generally slightly higher than VER's, but consistently lower than or equal to NOR's.</li>
+<li><strong>Acceleration:</strong> Accelerates well out of corners, showing a good recovery from the braking phase.</li>
+</ul>
+<p><strong>3. NOR (NOR Speed):</strong></p>
+<ul>
+<li><strong>Braking Point:</strong> NOR's braking points are often similar to PIA's, sometimes appearing to initiate braking slightly later than VER.</li>
+<li><strong>Braking Intensity/Force:</strong> NOR's initial braking appears slightly less sharp than VER's in some instances, and comparable to PIA's.<ul>
+<li><em>Zone 1 (0:00:08.047 - 0:00:11.606):</em> From 343 kmph (at 8.047s) down to 84 kmph (at 11.606s). A drop of 259 kmph in ~3.5 seconds, averaging ~74 kmph/s. His minimum speed is 74 kmph (at 12.807s), same as PIA in this section.</li>
+<li><em>Zone 2 (0:00:54.047 - 0:00:55.767):</em> From 324 kmph (at 54.047s) down to 202 kmph (at 55.767s). A drop of 122 kmph in ~1.7 seconds, averaging ~72 kmph/s. This is less aggressive than VER or PIA in this zone.</li>
+<li><em>Zone 3 (0:01:09.047 - 0:01:10.966):</em> From 321 kmph (at 1:09.047s) down to 217 kmph (at 1:10.966s). A drop of 104 kmph in ~1.9 seconds, averaging ~55 kmph/s.</li>
+</ul>
+</li>
+<li><strong>Minimum Speed:</strong> Tends to maintain slightly higher minimum speeds through corners compared to VER, and often similar to PIA.</li>
+<li><strong>Acceleration:</strong> Shows good acceleration out of corners, but the earlier, harder braking of VER might give him a slight edge in exit speed or setup for the next straight.</li>
+</ul>
+<p><strong>Comparative Analysis:</strong></p>
+<ul>
+<li><strong>Aggressiveness:</strong> <strong>VER</strong> appears to be the most aggressive braker, consistently entering braking zones hard and reaching the lowest minimum speeds. This suggests a driving style that optimizes for a sharp turn-in and potentially a later apex to maximize exit speed.</li>
+<li><strong>Consistency:</strong> <strong>PIA</strong> and <strong>NOR</strong> show somewhat similar patterns in braking zones, though PIA sometimes demonstrates very sharp initial deceleration in certain corners, comparable to VER. NOR seems to be slightly less aggressive in braking, resulting in marginally higher minimum speeds in some sections.</li>
+<li><strong>Overall Performance Implication:</strong><ul>
+<li><strong>VER's</strong> aggressive braking could be advantageous for lap time if he can consistently carry higher speed through the apex and maintain strong acceleration out of the corner. However, this style also carries higher risk of lock-ups or overdriving.</li>
+<li><strong>PIA's</strong> performance seems to be a strong contender, demonstrating bursts of very effective braking.</li>
+<li><strong>NOR's</strong> style, while not as outwardly aggressive in braking as VER's, is still effective. The slightly higher minimum speeds might imply a smoother, more flowing approach, which can be beneficial for tire preservation over a race distance, but might sacrifice a fraction of qualifying pace.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Limitations:</strong></p>
+<ul>
+<li><strong>Sparse Data:</strong> The asynchronous nature and gaps in the data for each driver make precise, millisecond-by-millisecond comparisons challenging without interpolation. We are inferring trends from discrete points.</li>
+<li><strong>No Track Context:</strong> Without a track map or knowledge of corner types, it's hard to definitively say <em>why</em> a driver brakes a certain way (e.g., tight hairpin vs. long sweeping corner).</li>
+<li><strong>Single Lap:</strong> This is only a segment of a qualifying lap. A full lap or multiple laps would provide more robust patterns.</li>
+</ul>
+<p><strong>Conclusion:</strong></p>
+<p>The analysis suggests a distinct difference in braking philosophies:</p>
+<ul>
+<li><strong>VER:</strong> Appears to be an "aggressive attacker" under braking, maximizing deceleration and achieving the lowest speeds through corners.</li>
+<li><strong>PIA:</strong> Demonstrates strong and sometimes very sharp braking, positioning him as a close rival to VER's aggression.</li>
+<li><strong>NOR:</strong> Shows a slightly less aggressive, possibly smoother, braking style that might result in slightly higher minimum corner speeds but potentially better stability or tire management.</li>
+</ul>
+<p>In a qualifying scenario, VER's aggressive style <em>might</em> yield marginal gains in lap time due to later braking and harder deceleration, assuming he can maintain control and quickly get back on the power.</p>
+
+
+							</div>
+							</section>
+                                    
+								</div>
+							</section>
+                            <section id="two">
+								<div class="inner">
+									<ul class="actions">
+                                        <li><a href="index.html" class="back button">Home</a></li>
+										<li><a href="index.html" class="back button">Back</a></li>
+									</ul>
+								</div>
+							</section>    
+					</div>
+
+				<!-- Contact -->
+				<section id="contact">
+					<div class="inner">
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon solid alt fa-envelope"></span>
+									<h3>Email</h3>
+										athirukkumar17@gmail.com
+								</div>
+							</section>
+						</section>
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon brands alt fa-linkedin-in"></span>
+									<h3>LinkedIn</h3>
+									<a href="https://www.linkedin.com/in/abinaash-thirukkumar">My Profile: Abinaash Thirukkumar</a>
+								</div>
+							</section>
+						</section>
+					</div>
+				</section>
+
+				<!-- Footer -->
+					<!--<footer id="footer">
+						<div class="inner">
+							<ul class="icons">
+								<li><a href="#" class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
+								<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+								<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+								<li><a href="#" class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
+								<li><a href="https://www.linkedin.com/in/abinaash-thirukkumar-3a143513b/" class="icon brands alt fa-linkedin-in"><span class="label">LinkedIn</span></a></li>
+							</ul>
+							<ul class="copyright">
+								<li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>-->
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+            
+
+			  <!-- Prism CSS (for syntax colors) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+
+  <!-- Prism JS (core + Python language support) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+
+
+
+	</body>
+</html>

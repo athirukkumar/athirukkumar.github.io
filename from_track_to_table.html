@@ -1,0 +1,401 @@
+<!DOCTYPE HTML>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>From Track to Table: Extracting data</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link rel="stylesheet" href="assets/css/tables.css">
+        <link rel="stylesheet" href="assets/css/code.css">
+
+        
+        <script src="scripts/loadTable.js"></script>
+    
+    </head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo"><strong>Abinaash Thirukkumar</strong> <span></span></a>
+						<nav>
+							<a href="#menu">Menu</a>
+						</nav>
+					</header>
+
+					<nav id="menu">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li><a href="understanding_f1.html">Getting up to Speed: Understanding F1</a></li>
+							<li><a href="tech_stack_and_tools.html">Building the toolkit: Tech Stack and Tools</a></li>
+							<li><a href="from_track_to_table.html">From Track to Table: Extracting data</a></li>
+							<li><a href="under_the_hood.html">Under the hood: Storing Data with SQL</a></li>
+							<li><a href="chasing_the_perfect_lap.html">Chasing the Perfect Lap: Analysing the data</a></li>
+							<li><a href="racing_ahead.html">Racing Ahead: Using AI</a></li>
+							<!--<li><a href="generic.html">Generic</a></li>
+							/<li><a href="elements.html">Elements</a></li>-->
+						</ul>
+						<ul class="actions stacked">
+							<!--<li><a href="#" class="button primary fit">Get Started</a></li>
+							<li><a href="#" class="button fit">Log In</a></li>-->
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main" class="alt">
+
+						<!-- One -->
+							<section id="one">
+								<div class="inner">
+<section id="introduction">
+							<div style="width:80%; margin-left:10%; margin-top:2%;background-color: None; margin-right: 10%; margin-bottom: 5%;">
+							<h1><b>From Track to Table: Extracting data</b></h1>
+								<h2>Import Modules</h2>
+<pre><code class="language-python">
+import datetime
+import logging
+import os
+
+import fastf1
+import fastf1.plotting
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+
+from IPython.display import Markdown, display
+from google import genai
+</code></pre>
+<h2>Set up Logging</h2>
+<pre><code class="language-python">
+# Set up logging to both console and file
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("driver_info.log"),
+        logging.StreamHandler()
+    ]
+)
+
+
+# Suppress fastf1 INFO messages
+logging.getLogger("fastf1").setLevel(logging.WARNING)
+</code></pre>
+
+
+<h2>Set the race year</h2>
+
+<pre><code class="language-python">
+# Set race_year
+race_year = 2025
+save_path = '/content/drive/MyDrive/F1 API/'
+</code></pre>
+
+
+<h2>Create function to get racing schedule</h2>
+<p><code>racing_schedule</code>has a list of all the races in a year, we do not need to extract information for races
+	 that have not yet occured. This method takes all the data and not just the delta. 
+	 If there were significantly more data then the delta method would be used</p>
+
+<pre><code class="language-python">
+def get_racing_schedule(race_year: int) -> pd.DataFrame:
+  """
+  Fetch the racing schedule for a given year, add metadata, and save it to a CSV file.
+
+  Parameters
+  ----------
+  race_year : int
+      The year for which to fetch the racing schedule.
+
+  Returns
+  -------
+  pd.DataFrame
+      A DataFrame containing the racing schedule for the specified year with an additional
+      column '_meta_extract_time' indicating when the data was extracted.
+
+  Raises
+  ------
+  Exception
+      If there is an error fetching the schedule from the FastF1 API.
+
+  Side Effects
+  ------------
+  - Saves the schedule as a CSV file named '{race_year}_racing_schedule.csv'.
+  - Logs information about the fetching process, metadata addition, and file saving.
+  """
+
+  logging.info(f"Fetching racing schedule for year: {race_year}")
+
+  # Get the event schedule for the season
+  try:
+      schedule = fastf1.get_event_schedule(race_year)
+      logging.info(f"Successfully retrieved {len(schedule)} events for {race_year}")
+  except Exception as e:
+      logging.error(f"Error fetching schedule for {race_year}: {e}")
+      raise
+
+  # Add meta data column
+  extract_time = datetime.datetime.now(datetime.UTC)
+  schedule['_meta_extract_time'] = extract_time
+  logging.info(f"Added metadata column '_meta_extract_time' with value: {extract_time}")
+
+
+  # Save to storage
+  file_name = f'{save_path}{race_year}_racing_schedule.csv'
+  schedule.to_csv(file_name, index = False)
+  logging.info(f"File saved '{file_name}'")
+
+
+  return schedule
+
+</code></pre>
+
+<h2>Getting the data for 2025</h2>
+<pre><code class="language-python">
+racing_schedule = get_racing_schedule(race_year=race_year)
+</code></pre>
+
+<h2>Getting Driver and Team Information</h2>
+<p>Over the course of a race season the number of teams does not change and drivers of the teams 
+	rarely changes. These fields have been treated as static for the qualifiying analysis. 
+	If the changes were more frequent then these can be treated as slowly changing dimension (SCD), 
+	and versioning could be implemented.</p>
+<pre><code class="language-python">
+def get_drivers_and_teams(race_year):
+    """
+    Retrieve the drivers and teams participating in a Formula 1 season for a given year.
+
+    This function uses the `fastf1` package to fetch the official event schedule for the
+    specified race year. It then iterates over completed events (up to the current date),
+    loads the race session data, and extracts driver and team details. Driver information
+    is aggregated across all completed races to account for mid-season changes, while team
+    information is extracted once since it is stable throughout the season.
+
+    Args:
+        race_year (int): The Formula 1 season year to fetch data for.
+
+    Returns:
+        dict: A dictionary containing:
+            - "drivers" (pd.DataFrame): DataFrame of unique drivers with fields:
+                ['DriverNumber', 'BroadcastName', 'Abbreviation', 'DriverId',
+                 'TeamId', 'FirstName', 'LastName', 'FullName', 'HeadshotUrl'].
+            - "teams" (pd.DataFrame): DataFrame of unique teams with fields:
+                ['TeamId', 'TeamName', 'TeamColor'].
+
+    Notes:
+        - Only completed events (EventDate <= current UTC time) are processed.
+        - If a driver changes teams mid-season, only the last occurrence is kept.
+        - Any failed session loads are skipped with a warning.
+        - Requires `fastf1` and `pandas`.
+
+    Raises:
+        Exception: If fetching session data fails, the specific event is skipped
+                   and the exception is logged.
+    """
+
+    # Create empty df for drivers
+    drivers = pd.DataFrame()
+
+    # List key fields that need to be extracted - This can be done more dynamically if need on a larger scale using a table-config file
+    driver_fields = ['DriverNumber' , 'BroadcastName', 'Abbreviation', 'DriverId', 'TeamId', 'FirstName', 'LastName' ,'FullName', 'HeadshotUrl']
+    team_fields = ['TeamId','TeamName', 'TeamColor']
+
+    # Get the racing schedule
+    racing_schedule = fastf1.get_event_schedule(race_year)
+    logging.info(f"Successfully retrieved {len(racing_schedule)} events for {race_year}")
+
+    # Loop through the races
+    for i, row in racing_schedule.iterrows():
+
+      # Only extract historic races - ignoring changes between drivers between sprint and race
+      if row['EventDate'] <= datetime.datetime.utcnow():
+
+        logging.info(f"Loading session for RoundNumber {row['RoundNumber']} - OfficialEventName {row['OfficialEventName']}")
+        try:
+            # Load session data
+            session = fastf1.get_session(race_year, row['RoundNumber'], 'R')
+            session.load()
+            logging.info(f"Session loaded for {row['RoundNumber']} - Event_name {row['OfficialEventName']}")
+
+
+            # Get Driver information
+            logging.info(f"Getting Drivers for {row['RoundNumber']} - Event_name {row['OfficialEventName']}")
+            driver_info = session.results[driver_fields]
+            drivers = pd.concat([drivers, driver_info], ignore_index=True)
+
+
+
+        except Exception as e:
+            print(f"Skipping round {row['RoundNumber']} due to error: {e}")
+
+      else:
+        logging.info(f"Skipping RoundNumber {row['RoundNumber']} - OfficialEventName {row['OfficialEventName']} - Event has not happened yet")
+
+      print(f'{i} of {len(racing_schedule)}')
+
+
+    # Driver line up can vary within a season, but a driver is unlikely to change teams mid season.
+    # If this does occur with more frequency then an SCD can be used
+    logging.info(f"Dropping duplicate drivers")
+    before = len(drivers)
+    drivers = drivers.drop_duplicates(subset=['DriverNumber'], keep="last").reset_index(drop=True)
+    after = len(drivers)
+    logging.info(f"Dropped rows : Rows before:{before}, Rows after: {after}, Rows dropped {before - after}")
+
+    # Team information only needs to be extracted once. Teams exist for the whole season so the session object can be used at the end, rather than multiple times in the for loop
+    logging.info(f"Getting team information")
+    team_info = session.results[team_fields]
+
+    # Each team has two drivers, so dropping dupes
+    team_info = team_info.drop_duplicates(keep="last").reset_index(drop=True)
+
+    # Output drivers and team dfs
+    output = {
+        'drivers': drivers,
+        'teams': team_info
+    }
+
+
+    return output
+output = get_drivers_and_teams(race_year = race_year)
+</code></pre>
+
+<p>This data was then saved, to avoid exhausting the API. In this project, the files were
+	saved locally, in a production setting with repeated calls to the API, this data can be stored
+in simple storage like Azure Blob Storage or S3 buckets, before being brought into a system like 
+a database.</p>
+
+
+
+<h3>Identifying drivers</h3>
+<p>Each driver can be identified by a three letter code, this typically easier to 
+	identify and communicate. The dataset is small and the data will not be joined 
+	extensively, so the driver abbreviation can be used. For larger datasets, with complex
+	joins, a integer join key would be used. A dictionary was created to get the colours for the 
+	respective drivers. Each driver has a <code>linestyle</code> key value pair. The solid
+	line is for the "main driver", and dashed for the second driver. When there have been more
+	than two drivers other linestyles have been chosen.
+</p>
+<pre><code class="language-python">
+# Create driver dict to display drivers in the respective team colours
+# Could have used team code here and pointed to the teams df, but didnt think of that
+driver_colour_dict  ={
+    'NOR' : {'color': '#F47600', 'linestyle': 'solid'},
+    'PIA' : {'color': '#F47600', 'linestyle': 'dashed'},
+
+    'HUL' : {'color': '#01C00E', 'linestyle': 'solid'},
+    'BOR' : {'color': '#01C00E', 'linestyle': 'dashed'},
+
+    'HAM' : {'color': '#ED1131', 'linestyle': 'dashed'},
+    'LEC' : {'color': '#ED1131', 'linestyle': 'solid'},
+
+    'VER' : {'color': '#4781D7', 'linestyle': 'solid'},
+    'TSU' : {'color': '#4781D7', 'linestyle': 'dashed'},
+
+    'GAS' : {'color': '#00A1E8', 'linestyle': 'solid'},
+    'DOO' : {'color': '#00A1E8', 'linestyle': 'dotted'},
+    'COL' : {'color': '#00A1E8', 'linestyle': 'dashed'},
+
+    'STR' : {'color': '#229971', 'linestyle': 'dashed'},
+    'ALO' : {'color': '#229971', 'linestyle': 'solid'},
+
+    'ALB' : {'color': '#1868DB', 'linestyle': 'solid'},
+    'SAI' : {'color': '#1868DB', 'linestyle': 'dashed'},
+
+    'RUS' : {'color': '#00D7B6', 'linestyle': 'solid'},
+    'ANT' : {'color': '#00D7B6', 'linestyle': 'dashed'},
+
+    'BEA' : {'color': '#9C9FA2', 'linestyle': 'dashed'},
+    'OCO' : {'color': '#9C9FA2', 'linestyle': 'solid'},
+
+    'HAD' : {'color': '#6C98FF', 'linestyle': 'solid'},
+    'LAW' : {'color': '#6C98FF', 'linestyle': 'dashed'}
+
+}
+</code></pre>
+
+
+							</div>
+							</section>
+                                    
+								</div>
+							</section>
+                            <section id="two">
+								<div class="inner">
+									<ul class="actions">
+                                        <li><a href="index.html" class="back button">Home</a></li>
+										<li><a href="index.html" class="back button">Back</a></li>
+									</ul>
+								</div>
+							</section>    
+					</div>
+
+				<!-- Contact -->
+				<section id="contact">
+					<div class="inner">
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon solid alt fa-envelope"></span>
+									<h3>Email</h3>
+										athirukkumar17@gmail.com
+								</div>
+							</section>
+						</section>
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon brands alt fa-linkedin-in"></span>
+									<h3>LinkedIn</h3>
+									<a href="https://www.linkedin.com/in/abinaash-thirukkumar">My Profile: Abinaash Thirukkumar</a>
+								</div>
+							</section>
+						</section>
+					</div>
+				</section>
+
+				<!-- Footer -->
+					<!--<footer id="footer">
+						<div class="inner">
+							<ul class="icons">
+								<li><a href="#" class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
+								<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+								<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+								<li><a href="#" class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
+								<li><a href="https://www.linkedin.com/in/abinaash-thirukkumar-3a143513b/" class="icon brands alt fa-linkedin-in"><span class="label">LinkedIn</span></a></li>
+							</ul>
+							<ul class="copyright">
+								<li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>-->
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+			  <!-- Prism CSS (for syntax colors) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+
+  <!-- Prism JS (core + Python language support) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+	</body>
+</html>

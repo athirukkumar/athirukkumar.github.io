@@ -1,0 +1,340 @@
+<!DOCTYPE HTML>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Under the hood: Storing Data with SQL</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+        <link rel="stylesheet" href="assets/css/tables.css">
+        <link rel="stylesheet" href="assets/css/code.css">
+
+        
+        <script src="scripts/loadTable.js"></script>
+    
+    </head>
+    
+
+	<body class="is-preload">
+
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo"><strong>Abinaash Thirukkumar</strong> <span></span></a>
+						<nav>
+							<a href="#menu">Menu</a>
+						</nav>
+					</header>
+
+					<nav id="menu">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li><a href="understanding_f1.html">Getting up to Speed: Understanding F1</a></li>
+							<li><a href="tech_stack_and_tools.html">Building the toolkit: Tech Stack and Tools</a></li>
+							<li><a href="from_track_to_table.html">From Track to Table: Extracting data</a></li>
+							<li><a href="under_the_hood.html">Under the hood: Storing Data with SQL</a></li>
+							<li><a href="chasing_the_perfect_lap.html">Chasing the Perfect Lap: Analysing the data</a></li>
+							<li><a href="racing_ahead.html">Racing Ahead: Using AI</a></li>
+							<!--<li><a href="generic.html">Generic</a></li>
+							/<li><a href="elements.html">Elements</a></li>-->
+						</ul>
+						<ul class="actions stacked">
+							<!--<li><a href="#" class="button primary fit">Get Started</a></li>
+							<li><a href="#" class="button fit">Log In</a></li>-->
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main" class="alt">
+
+						<!-- One -->
+							<section id="one">
+								<div class="inner">
+<section id="introduction">
+							<div style="width:80%; margin-left:10%; margin-top:2%;background-color: None; margin-right: 10%; margin-bottom: 5%;">
+							<h1><b>Under the hood: Modelling Data within SQL</b></h1>
+								
+
+<pre><code class="language-python">
+# Import modules
+import duckdb
+import pandas as pd
+from datetime import datetime
+import uuid
+
+# Establlish connection to warehouse
+con = duckdb.connect("warehouse.duckdb")
+</code></pre> 
+                  
+
+<h2>Add metadata columns</h2>
+<p>
+	Meta data columns are added to help with future debugging and governance to 
+	understand where the data came from in the future
+
+</p>
+
+<pre><code class="language-python">
+def add_metadata(df, source_name):
+    batch_id = str(uuid.uuid4())
+    ingested_at = datetime.utcnow()
+    
+    df['_ingested_at'] = ingested_at
+    df['_updated_at'] = ingested_at
+    df['_batch_id'] = batch_id
+    df['_source'] = source_name
+    
+    return df
+
+racing_schedule_df = add_metadata(racing_schedule_df, "f1_api_schedule")
+racingquali_race_comparison_df = add_metadata(racingquali_race_comparison_df, "f1_api_quali_race")
+
+</code></pre> 
+
+<h2>Create tables if they don't already exist</h2>
+                  
+<p>Tables are created to store the data, if the tables already exist this command 
+	does nothing. It is used as a catchall
+</p>
+<pre><code class="language-python">
+con.execute("""
+CREATE TABLE IF NOT EXISTS racing_schedule (
+    RoundNumber INTEGER,
+    Country VARCHAR,
+    Location VARCHAR,
+    OfficialEventName VARCHAR,
+    EventDate DATE,
+    EventName VARCHAR,
+    EventFormat VARCHAR,
+    Session1 VARCHAR,
+    Session1Date DATE,
+    Session1DateUtc TIMESTAMP,
+    Session2 VARCHAR,
+    Session2Date DATE,
+    Session2DateUtc TIMESTAMP,
+    Session3 VARCHAR,
+    Session3Date DATE,
+    Session3DateUtc TIMESTAMP,
+    Session4 VARCHAR,
+    Session4Date DATE,
+    Session4DateUtc TIMESTAMP,
+    Session5 VARCHAR,
+    Session5Date DATE,
+    Session5DateUtc TIMESTAMP,
+    F1ApiSupport BOOLEAN,
+    _meta_extract_time TIMESTAMP,
+    _ingested_at TIMESTAMP,
+    _updated_at TIMESTAMP,
+    _batch_id VARCHAR,
+    _source VARCHAR,
+    PRIMARY KEY (RoundNumber)
+);
+""")
+
+con.execute("""
+CREATE TABLE IF NOT EXISTS racingquali_race_comparison_schedule (
+    race_name VARCHAR,
+    round_number INTEGER,
+    race_type VARCHAR,
+    drivers LIST<VARCHAR>,
+    quali_position LIST<INTEGER>,
+    race_position LIST<INTEGER>,
+    ClassifiedPosition LIST<INTEGER>,
+    positions_gained LIST<INTEGER>,
+    is_DNF BOOLEAN,
+    _ingested_at TIMESTAMP,
+    _updated_at TIMESTAMP,
+    _batch_id VARCHAR,
+    _source VARCHAR,
+    PRIMARY KEY (race_name, round_number)
+);
+""")
+
+</code></pre> 
+
+
+
+<h2>Register dfs and Merge into tables</h2>
+<p>This is using a type one SCD, if this were to go to production, type two or type three 
+	of SCD can be used. For example, if the driver lineups changed more frequenctly this cloud
+	be a type two SCD. 
+</p>
+
+<pre><code class="language-python">
+# Register
+con.register("staging_racing_schedule", racing_schedule_df)
+con.register("staging_racingquali_race_comparison", racingquali_race_comparison_df)
+
+# Merge racing_schedule
+con.execute("""
+MERGE INTO racing_schedule AS tgt
+USING staging_racing_schedule AS src
+ON tgt.RoundNumber = src.RoundNumber
+WHEN MATCHED THEN UPDATE SET
+    Country = src.Country,
+    Location = src.Location,
+    OfficialEventName = src.OfficialEventName,
+    EventDate = src.EventDate,
+    EventName = src.EventName,
+    EventFormat = src.EventFormat,
+    Session1 = src.Session1,
+    Session1Date = src.Session1Date,
+    Session1DateUtc = src.Session1DateUtc,
+    Session2 = src.Session2,
+    Session2Date = src.Session2Date,
+    Session2DateUtc = src.Session2DateUtc,
+    Session3 = src.Session3,
+    Session3Date = src.Session3Date,
+    Session3DateUtc = src.Session3DateUtc,
+    Session4 = src.Session4,
+    Session4Date = src.Session4Date,
+    Session4DateUtc = src.Session4DateUtc,
+    Session5 = src.Session5,
+    Session5Date = src.Session5Date,
+    Session5DateUtc = src.Session5DateUtc,
+    F1ApiSupport = src.F1ApiSupport,
+    _meta_extract_time = src._meta_extract_time,
+    _updated_at = src._updated_at,
+    _batch_id = src._batch_id,
+    _source = src._source
+WHEN NOT MATCHED THEN INSERT (
+    RoundNumber, Country, Location, OfficialEventName, EventDate, EventName,
+    EventFormat, Session1, Session1Date, Session1DateUtc,
+    Session2, Session2Date, Session2DateUtc,
+    Session3, Session3Date, Session3DateUtc,
+    Session4, Session4Date, Session4DateUtc,
+    Session5, Session5Date, Session5DateUtc,
+    F1ApiSupport, _meta_extract_time, _ingested_at, _updated_at, _batch_id, _source
+)
+VALUES (
+    src.RoundNumber, src.Country, src.Location, src.OfficialEventName, src.EventDate, src.EventName,
+    src.EventFormat, src.Session1, src.Session1Date, src.Session1DateUtc,
+    src.Session2, src.Session2Date, src.Session2DateUtc,
+    src.Session3, src.Session3Date, src.Session3DateUtc,
+    src.Session4, src.Session4Date, src.Session4DateUtc,
+    src.Session5, src.Session5Date, src.Session5DateUtc,
+    src.F1ApiSupport, src._meta_extract_time, src._ingested_at, src._updated_at, src._batch_id, src._source
+);
+""")
+
+# Merge racingquali_race_comparison_schedule
+con.execute("""
+MERGE INTO racingquali_race_comparison_schedule AS tgt
+USING staging_racingquali_race_comparison AS src
+ON tgt.race_name = src.race_name AND tgt.round_number = src.round_number
+WHEN MATCHED THEN UPDATE SET
+    race_type = src.race_type,
+    drivers = src.drivers,
+    quali_position = src.quali_position,
+    race_position = src.race_position,
+    ClassifiedPosition = src.ClassifiedPosition,
+    positions_gained = src.positions_gained,
+    is_DNF = src.is_DNF,
+    _updated_at = src._updated_at,
+    _batch_id = src._batch_id,
+    _source = src._source
+WHEN NOT MATCHED THEN INSERT (
+    race_name, round_number, race_type, drivers, quali_position, race_position, ClassifiedPosition, positions_gained, is_DNF,
+    _ingested_at, _updated_at, _batch_id, _source
+)
+VALUES (
+    src.race_name, src.round_number, src.race_type, src.drivers, src.quali_position, src.race_position, src.ClassifiedPosition, src.positions_gained, src.is_DNF,
+    src._ingested_at, src._updated_at, src._batch_id, src._source
+);
+""")
+
+# Unregister staging
+con.unregister("staging_racing_schedule")
+con.unregister("staging_racingquali_race_comparison")
+
+</code></pre> 
+                  
+
+
+							</div>
+							</section>
+                                    
+								</div>
+							</section>
+                            <section id="two">
+								<div class="inner">
+									<ul class="actions">
+                                        <li><a href="index.html" class="back button">Home</a></li>
+										<li><a href="index.html" class="back button">Back</a></li>
+									</ul>
+								</div>
+							</section>    
+					</div>
+
+				<!-- Contact -->
+				<section id="contact">
+					<div class="inner">
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon solid alt fa-envelope"></span>
+									<h3>Email</h3>
+										athirukkumar17@gmail.com
+								</div>
+							</section>
+						</section>
+						<section class="split">
+							<section>
+								<div class="contact-method">
+									<span class="icon brands alt fa-linkedin-in"></span>
+									<h3>LinkedIn</h3>
+									<a href="https://www.linkedin.com/in/abinaash-thirukkumar">My Profile: Abinaash Thirukkumar</a>
+								</div>
+							</section>
+						</section>
+					</div>
+				</section>
+
+				<!-- Footer -->
+					<!--<footer id="footer">
+						<div class="inner">
+							<ul class="icons">
+								<li><a href="#" class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
+								<li><a href="#" class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+								<li><a href="#" class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+								<li><a href="#" class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
+								<li><a href="https://www.linkedin.com/in/abinaash-thirukkumar-3a143513b/" class="icon brands alt fa-linkedin-in"><span class="label">LinkedIn</span></a></li>
+							</ul>
+							<ul class="copyright">
+								<li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>-->
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+            
+
+			  <!-- Prism CSS (for syntax colors) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+
+  <!-- Prism JS (core + Python language support) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+
+
+
+	</body>
+</html>

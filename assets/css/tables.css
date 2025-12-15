@@ -1,0 +1,67 @@
+.table-scroll {
+  max-height: 350px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #ffffff; /* main background white */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* TABLE BASE */
+.table-scroll table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* HEADER */
+.table-scroll th {
+  background: #e0e0e0;  /* light grey header */
+  color: #000000;       /* black text */
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 2px solid #bbb;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* ROWS */
+.table-scroll td {
+  background: #ffffff; /* white rows */
+  color: #000000;      /* black text */
+  padding: 8px 14px;
+  border-bottom: 1px solid #ccc;
+  white-space: nowrap;
+}
+
+/* ZEBRA STRIPES */
+.table-scroll tr:nth-child(even) td {
+  background: #f5f5f5; /* light grey stripe */
+}
+
+/* HOVER EFFECT */
+.table-scroll tr:hover td {
+  background: #d3d3d3; /* dark grey on hover */
+  color: #000000;
+}
+
+/* Scrollbar styling */
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 4px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}

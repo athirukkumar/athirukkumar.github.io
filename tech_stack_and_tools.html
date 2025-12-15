@@ -6,7 +6,7 @@
 -->
 <html>
 	<head>
-		<title>An analysis of F1 qualifying</title>
+		<title>Building the toolkit: Tech Stack and Tools</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
@@ -18,14 +18,13 @@
 			<div id="wrapper">
 
 				<!-- Header -->
-					<header id="header" class="alt">
+					<header id="header">
 						<a href="index.html" class="logo"><strong>Abinaash Thirukkumar</strong> <span></span></a>
 						<nav>
 							<a href="#menu">Menu</a>
 						</nav>
 					</header>
 
-				<!-- Menu -->
 					<nav id="menu">
 						<ul class="links">
 							<li><a href="index.html">Home</a></li>
@@ -44,119 +43,69 @@
 						</ul>
 					</nav>
 
-				<!-- Banner -->
-					<section id="banner" class="major; alt style6">
-						<div class="inner">
-							<header class="major">
-								<h1>An analysis of F1 qualifying</h1>
-							</header>
-							<div class="content">
-								<p>Abinaash Thirukkumar</p>
-								<!--<ul class="actions">
-									<li><a href="#one" class="button next scrolly">Get Started</a></li>
-								</ul>-->
-							</div>
-						</div>
-					</section>
-
 				<!-- Main -->
-					<div id="main">
-
-
-						
-
-					
+					<div id="main" class="alt">
 
 						<!-- One -->
-							<section id="tile_selection" class="tiles">
-								<article>
-									<span class="image">
-										<img src="images/pic01.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="understanding_f1.html" class="link">Getting up to speed</a></h3>
-										<p>Understanding Formula 1</p>
-									</header>
-								</article>
-								<article>
-									<span class="image">
-										<img src="images/pic01.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="tech_stack_and_tools.html" class="link">Building the Toolkit</a></h3>
-										<p>Tech stack and Tools</p>
-									</header>
-								</article>
-
-								<article>
-									<span class="image">
-										<img src="images/pic01.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="from_track_to_table.html" class="link">From Track to Table</a></h3>
-										<p>Extracting data using APIs</p>
-									</header>
-								</article>
-								<article>
-									<span class="image">
-										<img src="images/pic02.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="under_the_hood.html" class="link">Under the Hood</a></h3>
-										<p>Storing Data with SQL</p>
-									</header>
-								</article>
-								<article>
-									<span class="image">
-										<img src="images/pic03.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="chasing_the_perfect_lap.html" class="link">Chasing the Perfect Lap</a></h3>
-										<p>Analysing the data</p>
-									</header>
-								</article>
-								<article>
-									<span class="image">
-										<img src="images/pic04.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="racing_ahead.html" class="link">Racing Ahead</a></h3>
-										<p>AI-Powered Insights</p>
-									</header>
-								</article>
-								<!--<article>
-									<span class="image">
-										<img src="images/pic05.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="landing.html" class="link">Consequat</a></h3>
-										<p>Ipsum dolor sit amet</p>
-									</header>
-								</article>
-								<article>
-									<span class="image">
-										<img src="images/pic06.jpg" alt="" />
-									</span>
-									<header class="major">
-										<h3><a href="landing.html" class="link">Etiam</a></h3>
-										<p>Feugiat amet tempus</p>
-									</header>
-								</article>-->
-							</section>
-
-						<!-- Two -->
-							<!--<section id="two">
+							<section id="one">
 								<div class="inner">
-									<header class="major">
-										<h2>About Me</h2>
-									</header>
-									<p>I am a recent Chemical Engineering graduate from the University of Leeds.  </p>
+<section id="introduction">
+							<div style="width:80%; margin-left:10%; margin-top:2%;background-color: None; margin-right: 10%; margin-bottom: 5%;">
+							<h1><b>Building the Toolkit: Tech Stack and Tools</b></h1>
+							<p>Much of the development work was carried out using Python and its associated libraries. 
+								Google Colab served as the primary development environment due to its accessibility, cost-effectiveness, 
+								and integration with other tools and platforms.</p>
+
+							<h2>Why Python?</h2>
+								<p style="text-align: justify;">
+								
+								
+							</p>
+
+							<p style="text-align: justify;">
+								Python is one of the most widely used languages for data analysis, due to its veratililty,
+								readability and simplicity. It offers an extensive ecosystem of modules, both custom and community built and 
+								frameworks for data extraction, modelling, and analysis. Python is also heavily use within data science and 
+								AI frameworks. Using python would enable seamless intergration between systems and processes.
+							</p>
+							<h2>Modules used</h2>
+							<p style="text-align: justify;">
+								Python’s power in data analysis comes from its rich set of libraries. <b>Pandas</b> is used for handling and manipulating tabular data efficiently. 
+								<b>FastF1</b> is a specialized library for accessing and analyzing Formula 1 telemetry and timing data. It provides a simplified interface to the OpenF1 API, 
+								allowing users to retrieve detailed race information such as lap times, sector data, and car telemetry without needing to manually construct and manage API calls. 
+								FastF1 was used for its ease of use—it abstracts away much of the technical setup and delivers preprocessed, structured data ready for analysis. 
+								It also includes built-in caching, integrates smoothly with visualisation tools like <b>Matplotlib</b> and <b>Seaborn</b>>, and benefits from strong community 
+								support. However, if real-time data or more customized queries are needed, the OpenF1 API can be accessed directly to provide more granular control. 
+								Open-source resources for FastF1 can be found on GitHub. Utility modules such as os and datetime assist with file handling and time-based operations, 
+								while <b>logging</b> supports best practices in debugging and code monitoring.
+
+							</p>
+
+							<h2>Google Colab</h2>
+
+							<p style="text-align: justify;">
+								Google Colab provides a cloud-based environment that allows you to write and execute Python code from anywhere with an internet connection. 
+								It removes the need for local installations and integrates seamlessly with Google Drive for easy data access and sharing. 
+								Colab also offers GPU and TPU acceleration for computationally intensive tasks, making it ideal for both data analysis and machine learning workflows. 
+								However, these were not used as part of this analyis. Additionally, it integrates effectively with Google Gemini and other AI tools, enabling 
+								enhanced analytical capabilities and AI-assisted insights directly within notebooks.
+							</p>
+
+						
+						
+							</div>
+							</section>
+                                    
+								</div>
+							</section>
+                            <section id="two">
+								<div class="inner">
 									<ul class="actions">
-										<li><a href="landing.html" class="button next">Get Started</a></li>
+                                        <li><a href="index.html" class="back button">Home</a></li>
+										<li><a href="index.html" class="back button">Back</a></li>
 									</ul>
 								</div>
-							</section>-->
-
+							</section>    
 					</div>
 
 				<!-- Contact -->
